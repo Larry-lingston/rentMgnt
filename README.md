@@ -2,6 +2,14 @@
 
 A full-stack **mobile rent management application** with separate portals for **landlords**, **tenants**, **maintenance crew**, and **room seekers**. Landlords manage properties and approve bookings; seekers browse vacant rooms and request to rent; approved applicants become tenants automatically.
 
+> **Quick start:** clone this repo, install [Node.js 18+](https://nodejs.org), and double-click **`start.bat`**. It installs everything, seeds the database, and launches both servers. See [One-Command Start](#one-command-start-windows).
+
+```bash
+git clone https://github.com/Larry-lingston/rentMgnt.git
+cd rentMgnt
+start.bat
+```
+
 ---
 
 ## Table of Contents
@@ -230,7 +238,17 @@ mobile/
 
 ## Transferring to Another PC
 
-Follow these steps when moving the project to a new computer (USB drive, zip, Git clone, etc.).
+The easiest route is to clone from GitHub and run the launcher:
+
+```bash
+git clone https://github.com/Larry-lingston/rentMgnt.git
+cd rentMgnt
+start.bat
+```
+
+The repo deliberately excludes `node_modules/`, `backend/prisma/dev.db`, and `backend/uploads/`. `start.bat` recreates all three, so the clone comes up with a freshly seeded demo database.
+
+If you are copying the folder by USB or zip instead, read on.
 
 ### What to copy
 
@@ -270,7 +288,15 @@ npm run db:seed
 
 ## One-Command Start (Windows)
 
-Instead of running the manual steps below, double-click **`start.bat`** in the project root (or run `.\start.ps1` from PowerShell). It does everything in one go:
+On a brand-new PC, install [Node.js 18+](https://nodejs.org) and [Git](https://git-scm.com/downloads), then:
+
+```bash
+git clone https://github.com/Larry-lingston/rentMgnt.git
+cd rentMgnt
+start.bat
+```
+
+That is the whole setup. Instead of running the manual steps below, `start.bat` (or `.\start.ps1` from PowerShell) does everything in one go:
 
 1. Verifies Node.js 18+ is installed
 2. Runs `npm install` in `backend/` and `app/` if `node_modules` is missing
@@ -292,6 +318,8 @@ Repeat runs skip the slow steps, so day-to-day it just starts both servers.
 | `start.bat -SkipIpUpdate` | Leave `theme.js` alone |
 | `start.bat -SetupOnly` | Install and prepare everything, but don't start the servers |
 | `stop.bat` | Stop whatever is listening on ports 3000 and 8081 |
+
+First run on a clean clone takes roughly 10 minutes (mostly `npm install` for Expo). Later runs start in seconds.
 
 If PowerShell blocks the script, use `start.bat` — it already runs with `-ExecutionPolicy Bypass`.
 

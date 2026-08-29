@@ -270,8 +270,9 @@ Write-Host ''
 Write-Host '  On your phone: install Expo Go, connect to the SAME Wi-Fi,' -ForegroundColor Gray
 Write-Host '  then scan the QR code shown in the Expo window.' -ForegroundColor Gray
 Write-Host ''
-Write-Host '  Demo logins   admin / admin123      (landlord)' -ForegroundColor Gray
-Write-Host '                tenant1 / tenant123   (tenant)' -ForegroundColor Gray
+Write-Host '  Demo logins   admin / admin123     (landlord)' -ForegroundColor Gray
+Write-Host '                john  / tenant123   (tenant)' -ForegroundColor Gray
+Write-Host '                maint / maint123    (maintenance crew)' -ForegroundColor Gray
 Write-Host ''
 Write-Host '  If the phone cannot reach the API, allow Node.js through' -ForegroundColor DarkGray
 Write-Host '  Windows Firewall on private networks.' -ForegroundColor DarkGray
