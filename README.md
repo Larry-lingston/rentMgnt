@@ -2,7 +2,7 @@
 
 A full-stack **mobile rent management application** with separate portals for **landlords**, **tenants**, **maintenance crew**, and **room seekers**. Landlords manage properties and approve bookings; seekers browse vacant rooms and request to rent; approved applicants become tenants automatically.
 
-> **Quick start:** clone this repo, install [Node.js 18+](https://nodejs.org), and double-click **`start.bat`**. It installs everything, seeds the database, and launches both servers. See [One-Command Start](#one-command-start-windows).
+> **Quick start (Windows):** clone this repo and double-click **`start.bat`**. It installs Node.js if missing, installs all dependencies, seeds the database, and launches both servers. Nothing else to set up. See [One-Command Start](#one-command-start-windows).
 
 ```bash
 git clone https://github.com/Larry-lingston/rentMgnt.git
@@ -148,7 +148,7 @@ Both must run at the same time during development.
 
 | Requirement | Details |
 |-------------|---------|
-| **Node.js** | v18.0.0 or higher ([download](https://nodejs.org)) |
+| **Node.js** | v18.0.0 or higher ([download](https://nodejs.org)) — on Windows, `start.bat` installs it for you |
 | **npm** | Comes with Node.js |
 | **Git** | Optional, for cloning the repo |
 | **Internet** | Needed for `npm install` (first time only) |
@@ -168,8 +168,8 @@ Both must run at the same time during development.
 
 ### Firewall
 
-- Allow inbound connections on port **3000** if testing from a physical device on your LAN.
-- Windows: ensure Node.js is allowed on private networks when prompted.
+- Allow inbound connections on ports **3000** and **8081** if testing from a physical device on your LAN.
+- Windows: run `start.bat` **as administrator once** and it adds the rule for you. Otherwise allow Node.js on private networks when prompted.
 
 ---
 
@@ -260,9 +260,8 @@ Copy the **entire `mobile` folder**, including source code. You may **exclude** 
 
 ### What you must do on the new PC
 
-1. Install **Node.js 18+**
-2. On Windows, double-click **`start.bat`** — it handles installs, the database, the IP address, and both servers. See [One-Command Start](#one-command-start-windows).
-3. Ensure phone and PC are on the **same Wi‑Fi** when testing on a real device
+1. On Windows, double-click **`start.bat`** — it installs Node.js if needed, then handles dependencies, the database, the IP address, the firewall rule, and both servers. See [One-Command Start](#one-command-start-windows).
+2. Install **Expo Go** on the phone and keep phone and PC on the **same Wi‑Fi**
 
 To do it manually instead:
 
@@ -288,7 +287,7 @@ npm run db:seed
 
 ## One-Command Start (Windows)
 
-On a brand-new PC, install [Node.js 18+](https://nodejs.org) and [Git](https://git-scm.com/downloads), then:
+A fresh Windows PC needs **nothing pre-installed**. Get the project onto the machine (clone it with [Git](https://git-scm.com/downloads), or just copy the folder from a USB drive), then double-click **`start.bat`**:
 
 ```bash
 git clone https://github.com/Larry-lingston/rentMgnt.git
@@ -296,16 +295,27 @@ cd rentMgnt
 start.bat
 ```
 
-That is the whole setup. Instead of running the manual steps below, `start.bat` (or `.\start.ps1` from PowerShell) does everything in one go:
+That is the whole setup. `start.bat` (or `.\start.ps1` from PowerShell) does everything in one go:
 
-1. Verifies Node.js 18+ is installed
-2. Runs `npm install` in `backend/` and `app/` if `node_modules` is missing
-3. Runs `prisma generate`, `prisma db push`, and seeds demo data the first time
-4. Detects this machine's Wi-Fi IP and writes it into `app/constants/theme.js` (`DEV_HOST`)
-5. Opens the backend API and the Expo dev server in two separate windows
-6. Prints the URLs and demo logins once the API responds to a health check
+1. **Installs Node.js LTS via `winget`** if it is missing or older than v18 — approve the Windows prompt when it appears
+2. Adds a Windows Firewall rule for ports 3000 and 8081 so your phone can reach the API (only when run as administrator)
+3. Runs `npm install` in `backend/` and `app/` if `node_modules` is missing
+4. Runs `prisma generate`, `prisma db push`, and seeds demo data the first time
+5. Detects this machine's Wi-Fi IP and writes it into `app/constants/theme.js` (`DEV_HOST`)
+6. Opens the backend API and the Expo dev server in two separate windows
+7. Prints the URLs and demo logins once the API responds to a health check
 
 Repeat runs skip the slow steps, so day-to-day it just starts both servers.
+
+### What you still need to do by hand
+
+| Requirement | Why the script can't do it |
+|-------------|---------------------------|
+| **Git** (optional) | Only needed to `git clone`; copying the folder works instead |
+| **Expo Go on your phone** | Installed from the Play Store / App Store on the phone itself |
+| **Same Wi-Fi network** | The phone and the PC must be on the same network |
+
+If Node.js has to be installed, **close the window and run `start.bat` again afterwards** if the script reports that `npm` is still not on `PATH` — a new window picks up the updated `PATH`.
 
 ### Options
 
@@ -317,6 +327,7 @@ Repeat runs skip the slow steps, so day-to-day it just starts both servers.
 | `start.bat -ApiHost 192.168.1.50` | Use a specific IP instead of auto-detection |
 | `start.bat -SkipIpUpdate` | Leave `theme.js` alone |
 | `start.bat -SetupOnly` | Install and prepare everything, but don't start the servers |
+| `start.bat -NoAutoInstall` | Never try to install Node.js automatically |
 | `stop.bat` | Stop whatever is listening on ports 3000 and 8081 |
 
 First run on a clean clone takes roughly 10 minutes (mostly `npm install` for Expo). Later runs start in seconds.

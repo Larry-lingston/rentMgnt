@@ -3,8 +3,12 @@
     One-command launcher for the Rent Manager app (backend API + Expo mobile app).
 
 .DESCRIPTION
-    Checks prerequisites, installs dependencies, prepares the SQLite database,
-    points the mobile app at this machine's LAN IP, then starts both servers.
+    Installs Node.js if it is missing, installs project dependencies, prepares
+    the SQLite database, points the mobile app at this machine's LAN IP, opens
+    the firewall for the dev servers, then starts the backend and Expo.
+
+    Designed so a fresh Windows PC needs nothing pre-installed except Windows
+    itself: copy or clone the project, run this, and the app is ready to use.
 
 .EXAMPLE
     .\start.ps1
@@ -24,7 +28,9 @@ param(
     # Leave app/constants/theme.js untouched.
     [switch]$SkipIpUpdate,
     # Prepare everything but don't start the servers.
-    [switch]$SetupOnly
+    [switch]$SetupOnly,
+    # Never try to install Node.js automatically.
+    [switch]$NoAutoInstall
 )
 
 $ErrorActionPreference = 'Stop'
@@ -44,6 +50,60 @@ function Stop-WithError ($m) {
     Write-Host "`nERROR: $m`n" -ForegroundColor Red
     Read-Host 'Press Enter to close'
     exit 1
+}
+
+function Test-Administrator {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    (New-Object Security.Principal.WindowsPrincipal $identity).IsInRole(
+        [Security.Principal.WindowsBuiltInRole]::Administrator
+    )
+}
+
+function Update-SessionPath {
+    $machine = [System.Environment]::GetEnvironmentVariable('Path', 'Machine')
+    $user    = [System.Environment]::GetEnvironmentVariable('Path', 'User')
+    $env:Path = ($machine, $user | Where-Object { $_ }) -join ';'
+}
+
+function Get-NodeMajorVersion {
+    if (-not (Get-Command node -ErrorAction SilentlyContinue)) { return 0 }
+    try {
+        $raw = (& node --version) 2>$null
+        return [int](($raw -replace '^v', '').Split('.')[0])
+    } catch {
+        return 0
+    }
+}
+
+function Install-NodeJs {
+    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+        Write-Warn 'winget is not available on this PC, so Node.js cannot be installed automatically.'
+        return $false
+    }
+
+    Write-Info 'Installing Node.js LTS with winget. Approve the Windows prompt if one appears...'
+    & winget install --id OpenJS.NodeJS.LTS --exact --silent `
+        --accept-source-agreements --accept-package-agreements
+
+    Update-SessionPath
+    return ((Get-NodeMajorVersion) -ge 18)
+}
+
+function Register-FirewallRule {
+    $ruleName = 'Rent Manager dev servers'
+
+    if (Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue) {
+        return 'exists'
+    }
+    if (-not (Test-Administrator)) {
+        return 'needs-admin'
+    }
+
+    New-NetFirewallRule -DisplayName $ruleName -Direction Inbound -Action Allow `
+        -Protocol TCP -LocalPort 3000, 8081 -Profile Private -ErrorAction SilentlyContinue | Out-Null
+
+    if (Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue) { return 'created' }
+    return 'failed'
 }
 
 function Invoke-Npm ($Arguments, $WorkingDirectory) {
@@ -139,19 +199,41 @@ Write-Host '  ----------------------------------' -ForegroundColor DarkGray
 # --- 1. Prerequisites -------------------------------------------------------
 Write-Step 'Checking prerequisites'
 
-if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-    Stop-WithError 'Node.js is not installed or not on PATH. Install Node.js 18 or newer from https://nodejs.org and run this script again.'
+if ((Get-NodeMajorVersion) -lt 18) {
+    if (Get-Command node -ErrorAction SilentlyContinue) {
+        Write-Warn "Node.js $(& node --version) is too old, version 18 or newer is required."
+    } else {
+        Write-Warn 'Node.js is not installed on this PC.'
+    }
+
+    if ($NoAutoInstall -or -not (Install-NodeJs)) {
+        Stop-WithError @'
+Node.js 18 or newer is required.
+
+Install it from https://nodejs.org (pick the LTS version), then close this
+window, open a new one, and run start.bat again.
+'@
+    }
+
+    Write-Ok 'Node.js installed'
 }
 
-$nodeVersion = (node --version).TrimStart('v')
-$nodeMajor   = [int]($nodeVersion.Split('.')[0])
-if ($nodeMajor -lt 18) {
-    Stop-WithError "Node.js $nodeVersion found, but version 18 or newer is required."
+Write-Ok "Node.js $(& node --version)"
+
+if (-not (Get-Command npm.cmd -ErrorAction SilentlyContinue)) {
+    Stop-WithError 'npm was not found on PATH. Close this window, open a new one, and run start.bat again.'
 }
-Write-Ok "Node.js v$nodeVersion"
 
 if (-not (Test-Path $BackendDir) -or -not (Test-Path $AppDir)) {
     Stop-WithError "Expected 'backend' and 'app' folders next to this script. Run it from inside the project folder."
+}
+Write-Ok 'Project folders found'
+
+switch (Register-FirewallRule) {
+    'created'     { Write-Ok 'Firewall rule added for ports 3000 and 8081' }
+    'exists'      { Write-Ok 'Firewall rule for ports 3000 and 8081 already present' }
+    'needs-admin' { Write-Info 'No firewall rule yet. If your phone cannot reach the API, run start.bat as administrator once.' }
+    default       { Write-Warn 'Could not add a firewall rule. Allow Node.js through Windows Firewall if the phone cannot connect.' }
 }
 
 # --- 2. Dependencies --------------------------------------------------------
