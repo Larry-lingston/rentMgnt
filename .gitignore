@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Secrets
+.env
+.env.local
+
+# SQLite database (recreated by start.bat / prisma db push + db:seed)
+*.db
+*.db-journal
+
+# Uploaded property images (created at runtime)
+backend/uploads/
+
+# Expo / Metro
+.expo/
+.expo-shared/
+dist/
+web-build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# Python helper scripts
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id              String   @id @default(cuid())
+  username        String   @unique
+  email           String   @unique
+  password        String
+  name            String
+  phone           String?
+  role            String   @default("admin")
+  landlordId      String?
+  tenantProfileId String?  @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  landlord        User?    @relation("LandlordUsers", fields: [landlordId], references: [id], onDelete: SetNull)
+  managedUsers    User[]   @relation("LandlordUsers")
+  tenantProfile   Tenant?  @relation("TenantAccount", fields: [tenantProfileId], references: [id], onDelete: SetNull)
+
+  properties      Property[]
+  tenants         Tenant[] @relation("LandlordTenants")
+  notifications   Notification[]
+  assignedTasks   MaintenanceRequest[] @relation("AssignedStaff")
+  bookingsMade    RoomBooking[] @relation("BookingApplicant")
+  bookingsReceived RoomBooking[] @relation("BookingLandlord")
+}
+
+model Property {
+  id          String   @id @default(cuid())
+  name        String
+  address     String
+  latitude    Float?
+  longitude   Float?
+  type        String   @default("apartment")
+  totalRooms  Int      @default(1)
+  description String?
+  imageUrl    String?
+  images      String?
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rooms               Room[]
+  maintenanceRequests MaintenanceRequest[]
+}
+
+model Room {
+  id         String @id @default(cuid())
+  roomNumber String
+  rentAmount Float  @default(0)
+  status     String @default("vacant")
+  imageUrl   String?
+  propertyId String
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenant   Tenant?
+  bookings RoomBooking[]
+}
+
+model RoomBooking {
+  id              String    @id @default(cuid())
+  roomId          String
+  applicantUserId String
+  landlordId      String
+  status          String    @default("pending")
+  message         String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  reviewedAt      DateTime?
+
+  room      Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  applicant User @relation("BookingApplicant", fields: [applicantUserId], references: [id], onDelete: Cascade)
+  landlord  User @relation("BookingLandlord", fields: [landlordId], references: [id], onDelete: Cascade)
+}
+
+model Tenant {
+  id         String    @id @default(cuid())
+  name       String
+  email      String?
+  phone      String
+  leaseStart DateTime?
+  leaseEnd   DateTime?
+  roomId     String?   @unique
+  userId     String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  landlord            User                 @relation("LandlordTenants", fields: [userId], references: [id], onDelete: Cascade)
+  room                Room?                @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  accountUser         User?                @relation("TenantAccount")
+  payments            Payment[]
+  maintenanceRequests MaintenanceRequest[]
+}
+
+model Payment {
+  id             String   @id @default(cuid())
+  tenantId       String
+  amount         Float
+  paymentDate    DateTime @default(now())
+  method         String   @default("app")
+  status         String   @default("completed")
+  transactionRef String?
+  receiptNumber  String   @unique
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model MaintenanceRequest {
+  id             String    @id @default(cuid())
+  title          String
+  description    String
+  status         String    @default("pending")
+  priority       String    @default("medium")
+  requestedBy    String    @default("admin")
+  assignmentMode String    @default("open")
+  tenantId       String?
+  propertyId     String
+  assignedToId   String?
+  claimedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  assignedTo User?    @relation("AssignedStaff", fields: [assignedToId], references: [id], onDelete: SetNull)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
