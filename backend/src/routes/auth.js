@@ -2,6 +2,9 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { PrismaClient } = require('@prisma/client');
 const { authMiddleware, signToken, userSelect } = require('../middleware/auth');
+const {
+  trim, isRequired, isEmail, isPassword, isPhone, ACCOUNT_TYPES, validateOptionalEmail,
+} = require('../lib/validation');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -9,12 +12,23 @@ const prisma = new PrismaClient();
 router.post('/register', async (req, res) => {
   try {
     const { username, email, password, name, phone, accountType, landlordUsername } = req.body;
-    if (!username || !email || !password || !name) {
+
+    if (!isRequired(username) || !isRequired(email) || !isRequired(password) || !isRequired(name)) {
       return res.status(400).json({ error: 'Username, email, password, and name are required' });
     }
+    if (!isEmail(email)) {
+      return res.status(400).json({ error: 'Enter a valid email address' });
+    }
+    if (!isPassword(password)) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const cleanUsername = trim(username);
+    const cleanEmail = trim(email);
+    const cleanName = trim(name);
 
     const existing = await prisma.user.findFirst({
-      where: { OR: [{ email }, { username }] },
+      where: { OR: [{ email: cleanEmail }, { username: cleanUsername }] },
     });
     if (existing) {
       return res.status(400).json({ error: 'Username or email already exists' });
@@ -28,8 +42,11 @@ router.post('/register', async (req, res) => {
       maintenance: 'maintenance',
     };
     const role = roleMap[accountType] || 'seeker';
+    if (accountType && !ACCOUNT_TYPES.includes(accountType)) {
+      return res.status(400).json({ error: 'Invalid account type' });
+    }
 
-    if ((role === 'tenant' || role === 'maintenance') && !landlordUsername?.trim()) {
+    if ((role === 'tenant' || role === 'maintenance') && !isRequired(landlordUsername)) {
       return res.status(400).json({ error: 'Landlord username is required for this account type' });
     }
 
@@ -39,8 +56,8 @@ router.post('/register', async (req, res) => {
         where: {
           role: 'admin',
           OR: [
-            { username: landlordUsername.trim() },
-            { email: landlordUsername.trim() },
+            { username: trim(landlordUsername) },
+            { email: trim(landlordUsername) },
           ],
         },
       });
@@ -57,19 +74,19 @@ router.post('/register', async (req, res) => {
       user = await prisma.$transaction(async (tx) => {
         const tenant = await tx.tenant.create({
           data: {
-            name,
-            email,
-            phone: phone || 'N/A',
+            name: cleanName,
+            email: cleanEmail,
+            phone: trim(phone) || 'N/A',
             userId: landlordId,
           },
         });
         return tx.user.create({
           data: {
-            username,
-            email,
+            username: cleanUsername,
+            email: cleanEmail,
             password: hashed,
-            name,
-            phone,
+            name: cleanName,
+            phone: trim(phone) || null,
             role: 'tenant',
             landlordId,
             tenantProfileId: tenant.id,
@@ -80,11 +97,11 @@ router.post('/register', async (req, res) => {
     } else {
       user = await prisma.user.create({
         data: {
-          username,
-          email,
+          username: cleanUsername,
+          email: cleanEmail,
           password: hashed,
-          name,
-          phone,
+          name: cleanName,
+          phone: trim(phone) || null,
           role,
           landlordId,
         },
@@ -102,12 +119,13 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    if (!username || !password) {
+    if (!isRequired(username) || !isRequired(password)) {
       return res.status(400).json({ error: 'Username and password are required' });
     }
 
+    const identifier = trim(username);
     const user = await prisma.user.findFirst({
-      where: { OR: [{ username }, { email: username }] },
+      where: { OR: [{ username: identifier }, { email: identifier }] },
     });
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -122,12 +140,23 @@ router.post('/login', async (req, res) => {
 });
 
 router.post('/forgot-password', async (req, res) => {
-  const { email } = req.body;
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) {
-    return res.json({ message: 'If that email exists, a reset link has been sent' });
+  try {
+    const { email } = req.body;
+    if (!isRequired(email)) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    if (!isEmail(email)) {
+      return res.status(400).json({ error: 'Enter a valid email address' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email: trim(email) } });
+    if (!user) {
+      return res.json({ message: 'If that email exists, a reset link has been sent' });
+    }
+    res.json({ message: 'If that email exists, a reset link has been sent' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-  res.json({ message: 'If that email exists, a reset link has been sent' });
 });
 
 router.get('/profile', authMiddleware, async (req, res) => {
@@ -150,10 +179,40 @@ router.get('/profile', authMiddleware, async (req, res) => {
 router.put('/profile', authMiddleware, async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
-    const data = { name, email, phone };
+    const data = {};
+
+    if (name !== undefined) {
+      if (!isRequired(name)) {
+        return res.status(400).json({ error: 'Name is required' });
+      }
+      data.name = trim(name);
+    }
+    if (email !== undefined) {
+      if (!isRequired(email)) {
+        return res.status(400).json({ error: 'Email is required' });
+      }
+      if (!isEmail(email)) {
+        return res.status(400).json({ error: 'Enter a valid email address' });
+      }
+      const cleanEmail = trim(email);
+      const existing = await prisma.user.findFirst({
+        where: { email: cleanEmail, NOT: { id: req.user.id } },
+      });
+      if (existing) {
+        return res.status(400).json({ error: 'Email is already in use' });
+      }
+      data.email = cleanEmail;
+    }
+    if (phone !== undefined) {
+      data.phone = trim(phone) || null;
+    }
     if (password) {
+      if (!isPassword(password)) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters' });
+      }
       data.password = await bcrypt.hash(password, 10);
     }
+
     const user = await prisma.user.update({
       where: { id: req.user.id },
       data,

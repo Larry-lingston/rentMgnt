@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../services/api';
 import { EmptyState, LoadingScreen } from '../../components/UI';
 import { COLORS } from '../../constants/theme';
+import { validateStaffForm, trim } from '../../utils/validation';
 
 export default function StaffManagementScreen() {
   const [staff, setStaff] = useState([]);
@@ -30,13 +31,20 @@ export default function StaffManagementScreen() {
   useFocusEffect(useCallback(() => { loadData(); }, []));
 
   async function handleCreate() {
-    if (!form.name || !form.username || !form.email || !form.password) {
-      Alert.alert('Error', 'Name, username, email, and password are required');
+    const error = validateStaffForm(form);
+    if (error) {
+      Alert.alert('Error', error);
       return;
     }
     setSubmitting(true);
     try {
-      await api.createStaffMember(form);
+      await api.createStaffMember({
+        name: trim(form.name),
+        username: trim(form.username),
+        email: trim(form.email),
+        phone: trim(form.phone) || undefined,
+        password: form.password,
+      });
       setModalVisible(false);
       setForm({ name: '', username: '', email: '', phone: '', password: '' });
       loadData();

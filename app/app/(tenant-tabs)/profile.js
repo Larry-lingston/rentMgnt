@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView 
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS } from '../../constants/theme';
+import { validateProfile, trim } from '../../utils/validation';
 
 export default function TenantProfileScreen() {
   const { user, logout, updateProfile } = useAuth();
@@ -11,9 +12,18 @@ export default function TenantProfileScreen() {
   const [loading, setLoading] = useState(false);
 
   async function handleSave() {
+    const error = validateProfile(form);
+    if (error) {
+      Alert.alert('Error', error);
+      return;
+    }
     setLoading(true);
     try {
-      const data = { name: form.name, email: form.email, phone: form.phone };
+      const data = {
+        name: trim(form.name),
+        email: trim(form.email),
+        phone: trim(form.phone) || null,
+      };
       if (form.password) data.password = form.password;
       await updateProfile(data);
       Alert.alert('Success', 'Profile updated');

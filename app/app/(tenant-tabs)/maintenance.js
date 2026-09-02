@@ -7,6 +7,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../services/api';
 import { StatusBadge, EmptyState, LoadingScreen } from '../../components/UI';
 import { COLORS } from '../../constants/theme';
+import { isRequired, trim } from '../../utils/validation';
+
+const PRIORITIES = [
+  { id: 'low', label: 'Low' },
+  { id: 'medium', label: 'Medium' },
+  { id: 'high', label: 'High' },
+];
 
 export default function TenantMaintenanceScreen() {
   const [requests, setRequests] = useState([]);
@@ -48,7 +55,7 @@ export default function TenantMaintenanceScreen() {
   }
 
   async function handleSubmit() {
-    if (!form.title || !form.description) {
+    if (!isRequired(form.title) || !isRequired(form.description)) {
       Alert.alert('Error', 'Title and description are required');
       return;
     }
@@ -58,7 +65,13 @@ export default function TenantMaintenanceScreen() {
     }
     setSubmitting(true);
     try {
-      await api.submitTenantMaintenance(form);
+      await api.submitTenantMaintenance({
+        title: trim(form.title),
+        description: trim(form.description),
+        priority: form.priority,
+        assignmentMode: form.assignmentMode,
+        assignedToId: form.assignedToId,
+      });
       setModalVisible(false);
       setForm({ title: '', description: '', priority: 'medium', assignmentMode: 'open', assignedToId: '' });
       loadData();
@@ -112,6 +125,19 @@ export default function TenantMaintenanceScreen() {
 
               <Text style={styles.label}>Description</Text>
               <TextInput style={[styles.input, { height: 80 }]} value={form.description} onChangeText={(v) => setForm((p) => ({ ...p, description: v }))} multiline />
+
+              <Text style={styles.label}>Priority</Text>
+              <View style={styles.modeRow}>
+                {PRIORITIES.map((p) => (
+                  <TouchableOpacity
+                    key={p.id}
+                    style={[styles.modeChip, form.priority === p.id && styles.modeActive]}
+                    onPress={() => setForm((prev) => ({ ...prev, priority: p.id }))}
+                  >
+                    <Text style={styles.modeText}>{p.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
               <Text style={styles.label}>How should crew be assigned?</Text>
               <View style={styles.modeRow}>

@@ -13,6 +13,9 @@ import {
 } from '../components/PropertyImagePicker';
 import { COLORS, RADIUS } from '../constants/theme';
 import { getParam } from '../utils/params';
+import {
+  isRequired, isPositiveInt, validateLatitude, validateLongitude, trim,
+} from '../utils/validation';
 
 const PROPERTY_TYPES = [
   { id: 'apartment', label: 'Apartment' },
@@ -50,13 +53,35 @@ export default function PropertyFormScreen() {
   }, [id]);
 
   async function handleSubmit() {
-    if (!form.name || !form.address) {
+    if (!isRequired(form.name) || !isRequired(form.address)) {
       Alert.alert('Error', 'Name and address are required');
+      return;
+    }
+
+    if (!id && !isPositiveInt(form.totalRooms)) {
+      Alert.alert('Error', 'Total rooms must be at least 1');
+      return;
+    }
+
+    const latError = validateLatitude(form.latitude);
+    if (latError) {
+      Alert.alert('Error', latError);
+      return;
+    }
+
+    const lngError = validateLongitude(form.longitude);
+    if (lngError) {
+      Alert.alert('Error', lngError);
       return;
     }
 
     if (images.some((img) => img.uploading)) {
       Alert.alert('Please wait', 'Photos are still uploading.');
+      return;
+    }
+
+    if (images.some((img) => img.error)) {
+      Alert.alert('Upload failed', 'Remove failed photos or retry before saving.');
       return;
     }
 
@@ -72,8 +97,11 @@ export default function PropertyFormScreen() {
     setLoading(true);
     try {
       const data = {
-        ...form,
-        totalRooms: parseInt(form.totalRooms) || 1,
+        name: trim(form.name),
+        address: trim(form.address),
+        type: form.type,
+        description: trim(form.description),
+        totalRooms: parseInt(form.totalRooms, 10) || 1,
         latitude: form.latitude ? parseFloat(form.latitude) : null,
         longitude: form.longitude ? parseFloat(form.longitude) : null,
         images: uploadedImages,

@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { ACCOUNT_TYPES, accountTypeNeedsLandlord, getHomeRoute } from '../utils/roles';
 import { COLORS } from '../constants/theme';
 import { getParam } from '../utils/params';
+import { isRequired, isEmail, isPassword, trim } from '../utils/validation';
 
 const VALID_TYPES = ACCOUNT_TYPES.map((t) => t.id);
 
@@ -34,11 +35,19 @@ export default function RegisterScreen() {
   }
 
   async function handleRegister() {
-    if (!form.username || !form.email || !form.name || !form.password) {
+    if (!isRequired(form.username) || !isRequired(form.email) || !isRequired(form.name) || !isRequired(form.password)) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
-    if (needsLandlord && !form.landlordUsername.trim()) {
+    if (!isEmail(form.email)) {
+      Alert.alert('Error', 'Enter a valid email address');
+      return;
+    }
+    if (!isPassword(form.password)) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
+      return;
+    }
+    if (needsLandlord && !isRequired(form.landlordUsername)) {
       Alert.alert('Error', 'Enter your landlord\'s username');
       return;
     }
@@ -46,9 +55,13 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       const userData = await register({
-        ...form,
+        username: trim(form.username),
+        email: trim(form.email),
+        name: trim(form.name),
+        phone: trim(form.phone) || undefined,
+        password: form.password,
         accountType,
-        landlordUsername: form.landlordUsername.trim() || undefined,
+        landlordUsername: trim(form.landlordUsername) || undefined,
       });
       if (returnRoomId && userData.role === 'seeker') {
         router.replace({ pathname: '/room-detail', params: { id: returnRoomId } });

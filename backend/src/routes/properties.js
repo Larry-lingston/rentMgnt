@@ -2,6 +2,9 @@ const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const { parseImageUrls, serializePropertyImages } = require('../lib/property-images');
+const {
+  trim, isRequired, parsePositiveInt, parseOptionalCoord, isOneOf, PROPERTY_TYPES,
+} = require('../lib/validation');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -47,8 +50,11 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { name, address, type, totalRooms, description, rooms, latitude, longitude } = req.body;
-    if (!name || !address) {
+    if (!isRequired(name) || !isRequired(address)) {
       return res.status(400).json({ error: 'Name and address are required' });
+    }
+    if (type && !isOneOf(type, PROPERTY_TYPES)) {
+      return res.status(400).json({ error: 'Invalid property type' });
     }
 
     const imageUrls = parseImageUrls(req.body);
@@ -58,7 +64,16 @@ router.post('/', async (req, res) => {
       });
     }
 
-    const roomCount = totalRooms || 1;
+    const roomCount = parsePositiveInt(totalRooms) || 1;
+    const lat = parseOptionalCoord(latitude, -90, 90);
+    const lng = parseOptionalCoord(longitude, -180, 180);
+    if (latitude != null && trim(latitude) !== '' && lat === undefined) {
+      return res.status(400).json({ error: 'Latitude must be between -90 and 90' });
+    }
+    if (longitude != null && trim(longitude) !== '' && lng === undefined) {
+      return res.status(400).json({ error: 'Longitude must be between -180 and 180' });
+    }
+
     const coverImage = imageUrls[0];
     const roomData = rooms || Array.from({ length: roomCount }, (_, i) => ({
       roomNumber: `Room ${i + 1}`,
@@ -69,14 +84,14 @@ router.post('/', async (req, res) => {
 
     const property = await prisma.property.create({
       data: {
-        name,
-        address,
+        name: trim(name),
+        address: trim(address),
         type: type || 'apartment',
         totalRooms: roomCount,
-        description,
+        description: trim(description) || null,
         ...serializePropertyImages(imageUrls),
-        latitude: latitude != null ? parseFloat(latitude) : null,
-        longitude: longitude != null ? parseFloat(longitude) : null,
+        latitude: lat,
+        longitude: lng,
         userId: req.user.id,
         rooms: {
           create: roomData.map((r) => ({
@@ -108,17 +123,35 @@ router.put('/:id', async (req, res) => {
         error: 'At least one property photo is required',
       });
     }
+    if (name !== undefined && !isRequired(name)) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+    if (address !== undefined && !isRequired(address)) {
+      return res.status(400).json({ error: 'Address is required' });
+    }
+    if (type && !isOneOf(type, PROPERTY_TYPES)) {
+      return res.status(400).json({ error: 'Invalid property type' });
+    }
+
+    const lat = parseOptionalCoord(latitude, -90, 90);
+    const lng = parseOptionalCoord(longitude, -180, 180);
+    if (latitude != null && trim(latitude) !== '' && lat === undefined) {
+      return res.status(400).json({ error: 'Latitude must be between -90 and 90' });
+    }
+    if (longitude != null && trim(longitude) !== '' && lng === undefined) {
+      return res.status(400).json({ error: 'Longitude must be between -180 and 180' });
+    }
 
     const property = await prisma.property.update({
       where: { id: req.params.id },
       data: {
-        name,
-        address,
+        name: name !== undefined ? trim(name) : undefined,
+        address: address !== undefined ? trim(address) : undefined,
         type,
-        description,
+        description: description !== undefined ? (trim(description) || null) : undefined,
         ...serializePropertyImages(imageUrls),
-        latitude: latitude != null ? parseFloat(latitude) : undefined,
-        longitude: longitude != null ? parseFloat(longitude) : undefined,
+        latitude: latitude !== undefined ? lat : undefined,
+        longitude: longitude !== undefined ? lng : undefined,
       },
       include: { rooms: { include: { tenant: true } } },
     });

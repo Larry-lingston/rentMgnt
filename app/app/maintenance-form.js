@@ -5,6 +5,13 @@ import {
 import { useRouter } from 'expo-router';
 import { api } from '../services/api';
 import { COLORS } from '../constants/theme';
+import { isRequired, trim } from '../utils/validation';
+
+const PRIORITIES = [
+  { id: 'low', label: 'Low' },
+  { id: 'medium', label: 'Medium' },
+  { id: 'high', label: 'High' },
+];
 
 export default function MaintenanceFormScreen() {
   const router = useRouter();
@@ -30,7 +37,7 @@ export default function MaintenanceFormScreen() {
   }
 
   async function handleSubmit() {
-    if (!form.title || !form.description || !form.propertyId) {
+    if (!isRequired(form.title) || !isRequired(form.description) || !form.propertyId) {
       Alert.alert('Error', 'Title, description, and property are required');
       return;
     }
@@ -41,8 +48,8 @@ export default function MaintenanceFormScreen() {
     setLoading(true);
     try {
       await api.createMaintenanceRequest({
-        title: form.title,
-        description: form.description,
+        title: trim(form.title),
+        description: trim(form.description),
         propertyId: form.propertyId,
         tenantId: form.tenantId || null,
         priority: form.priority,
@@ -73,11 +80,30 @@ export default function MaintenanceFormScreen() {
       ))}
 
       <Text style={styles.label}>Tenant (optional)</Text>
+      <TouchableOpacity
+        style={[styles.option, !form.tenantId && styles.optionActive]}
+        onPress={() => setForm((prev) => ({ ...prev, tenantId: '' }))}
+      >
+        <Text style={styles.optionText}>None</Text>
+      </TouchableOpacity>
       {tenants.map((t) => (
         <TouchableOpacity key={t.id} style={[styles.option, form.tenantId === t.id && styles.optionActive]} onPress={() => setForm((prev) => ({ ...prev, tenantId: t.id }))}>
           <Text style={styles.optionText}>{t.name}</Text>
         </TouchableOpacity>
       ))}
+
+      <Text style={styles.label}>Priority</Text>
+      <View style={styles.modeRow}>
+        {PRIORITIES.map((p) => (
+          <TouchableOpacity
+            key={p.id}
+            style={[styles.modeChip, form.priority === p.id && styles.modeActive]}
+            onPress={() => setForm((prev) => ({ ...prev, priority: p.id }))}
+          >
+            <Text style={styles.modeText}>{p.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       <Text style={styles.label}>Crew assignment</Text>
       <View style={styles.modeRow}>

@@ -1,6 +1,7 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const { authMiddleware, requireRole, userSelect } = require('../middleware/auth');
+const { trim } = require('../lib/validation');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -13,6 +14,9 @@ router.post('/', authMiddleware, requireRole('seeker'), async (req, res) => {
   try {
     const { roomId, message } = req.body;
     if (!roomId) return res.status(400).json({ error: 'Room is required' });
+    if (message && trim(message).length > 500) {
+      return res.status(400).json({ error: 'Message must be 500 characters or less' });
+    }
 
     const room = await prisma.room.findFirst({
       where: { id: roomId, status: 'vacant', tenant: null },
@@ -32,7 +36,7 @@ router.post('/', authMiddleware, requireRole('seeker'), async (req, res) => {
         roomId,
         applicantUserId: req.user.id,
         landlordId: room.property.userId,
-        message: message || null,
+        message: message ? trim(message) : null,
       },
       include: {
         room: { include: { property: true } },

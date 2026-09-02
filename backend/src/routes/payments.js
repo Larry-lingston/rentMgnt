@@ -1,6 +1,7 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const { authMiddleware, requireRole } = require('../middleware/auth');
+const { parsePositiveAmount, isOneOf, PAYMENT_METHODS } = require('../lib/validation');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -83,8 +84,15 @@ router.get('/tenant/:tenantId', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { tenantId, amount, paymentDate, method, notes } = req.body;
-    if (!tenantId || !amount) {
-      return res.status(400).json({ error: 'Tenant and amount are required' });
+    if (!tenantId) {
+      return res.status(400).json({ error: 'Tenant is required' });
+    }
+    const parsedAmount = parsePositiveAmount(amount);
+    if (!parsedAmount) {
+      return res.status(400).json({ error: 'Enter a valid amount greater than 0' });
+    }
+    if (method && !isOneOf(method, PAYMENT_METHODS)) {
+      return res.status(400).json({ error: 'Invalid payment method' });
     }
 
     const tenant = await prisma.tenant.findFirst({
@@ -95,7 +103,7 @@ router.post('/', async (req, res) => {
     const payment = await prisma.payment.create({
       data: {
         tenantId,
-        amount: parseFloat(amount),
+        amount: parsedAmount,
         paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
         method: method || 'cash',
         receiptNumber: generateReceiptNumber(),

@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { api } from '../services/api';
 import { COLORS } from '../constants/theme';
 import { formatMoney } from '../utils/currency';
+import { isRequired, isPositiveAmount } from '../utils/validation';
 
 const METHODS = ['cash', 'bank_transfer', 'check', 'mobile_money'];
 
@@ -20,8 +21,12 @@ export default function PaymentFormScreen() {
   }, []);
 
   async function handleSubmit() {
-    if (!form.tenantId || !form.amount) {
-      Alert.alert('Error', 'Select a tenant and enter amount');
+    if (!form.tenantId) {
+      Alert.alert('Error', 'Select a tenant');
+      return;
+    }
+    if (!isRequired(form.amount) || !isPositiveAmount(form.amount)) {
+      Alert.alert('Error', 'Enter a valid amount greater than 0');
       return;
     }
     setLoading(true);
@@ -44,7 +49,10 @@ export default function PaymentFormScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.label}>Select Tenant</Text>
+      <Text style={styles.label}>Select Tenant *</Text>
+      {tenants.length === 0 ? (
+        <Text style={styles.emptyHint}>No tenants available. Add a tenant first.</Text>
+      ) : null}
       {tenants.map((t) => (
         <TouchableOpacity
           key={t.id}
@@ -119,4 +127,5 @@ const styles = StyleSheet.create({
   methodTextActive: { color: COLORS.white },
   button: { backgroundColor: COLORS.secondary, borderRadius: 10, padding: 16, alignItems: 'center', marginTop: 24, marginBottom: 40 },
   buttonText: { color: COLORS.white, fontSize: 16, fontWeight: '600' },
+  emptyHint: { fontSize: 13, color: COLORS.textLight, marginBottom: 8 },
 });

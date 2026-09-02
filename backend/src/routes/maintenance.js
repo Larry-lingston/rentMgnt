@@ -7,6 +7,7 @@ const {
   notifyAllLandlordCrew,
   validateLandlordStaff,
 } = require('../lib/helpers');
+const { trim, isRequired, isOneOf, PRIORITIES } = require('../lib/validation');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -33,14 +34,26 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { title, description, propertyId, tenantId, priority, assignmentMode, assignedToId } = req.body;
-    if (!title || !description || !propertyId) {
+    if (!isRequired(title) || !isRequired(description) || !propertyId) {
       return res.status(400).json({ error: 'Title, description, and property are required' });
+    }
+    if (priority && !isOneOf(priority, PRIORITIES)) {
+      return res.status(400).json({ error: 'Invalid priority' });
     }
 
     const property = await prisma.property.findFirst({
       where: { id: propertyId, userId: req.user.id },
     });
     if (!property) return res.status(404).json({ error: 'Property not found' });
+
+    if (tenantId) {
+      const tenant = await prisma.tenant.findFirst({
+        where: { id: tenantId, userId: req.user.id, room: { propertyId } },
+      });
+      if (!tenant) {
+        return res.status(400).json({ error: 'Tenant does not belong to the selected property' });
+      }
+    }
 
     const mode = assignmentMode === 'selected' ? 'selected' : 'open';
     let staffId = null;
@@ -56,11 +69,11 @@ router.post('/', async (req, res) => {
 
     const request = await prisma.maintenanceRequest.create({
       data: {
-        title,
-        description,
+        title: trim(title),
+        description: trim(description),
         propertyId,
         tenantId: tenantId || null,
-        priority: priority || 'medium',
+        priority: isOneOf(priority, PRIORITIES) ? priority : 'medium',
         requestedBy: 'admin',
         assignmentMode: mode,
         assignedToId: staffId,

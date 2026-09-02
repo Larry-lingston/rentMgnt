@@ -7,6 +7,7 @@ import { api } from '../../services/api';
 import { EmptyState, LoadingScreen } from '../../components/UI';
 import { COLORS } from '../../constants/theme';
 import { formatMoney } from '../../utils/currency';
+import { isPositiveAmount } from '../../utils/validation';
 
 export default function TenantPaymentsScreen() {
   const [payments, setPayments] = useState([]);
@@ -53,8 +54,12 @@ export default function TenantPaymentsScreen() {
 
   async function handlePay() {
     const amount = parseFloat(payAmount);
-    if (!amount || amount <= 0) {
-      Alert.alert('Error', 'Enter a valid amount');
+    if (!isPositiveAmount(payAmount)) {
+      Alert.alert('Error', 'Enter a valid amount greater than 0');
+      return;
+    }
+    if (outstanding > 0 && amount > outstanding) {
+      Alert.alert('Error', `Amount cannot exceed outstanding balance of ${formatMoney(outstanding)}`);
       return;
     }
     setPaying(true);

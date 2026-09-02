@@ -11,6 +11,9 @@ const {
 } = require('../lib/helpers');
 const { generateRentNotificationsForTenant } = require('../lib/rent-notifications');
 const { formatMoney } = require('../lib/currency');
+const {
+  trim, isRequired, parsePositiveAmount, isOneOf, PAYMENT_METHODS, PRIORITIES,
+} = require('../lib/validation');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -87,10 +90,13 @@ router.post('/payments/pay', async (req, res) => {
   try {
     const tenant = await getTenantProfile(req.user);
     const { amount, method } = req.body;
-    const payAmount = parseFloat(amount);
+    const payAmount = parsePositiveAmount(amount);
 
-    if (!payAmount || payAmount <= 0) {
+    if (!payAmount) {
       return res.status(400).json({ error: 'Valid amount is required' });
+    }
+    if (method && !isOneOf(method, PAYMENT_METHODS)) {
+      return res.status(400).json({ error: 'Invalid payment method' });
     }
 
     const now = new Date();
@@ -202,8 +208,11 @@ router.post('/maintenance', async (req, res) => {
   try {
     const tenant = await getTenantProfile(req.user);
     const { title, description, priority, assignmentMode, assignedToId } = req.body;
-    if (!title || !description) {
+    if (!isRequired(title) || !isRequired(description)) {
       return res.status(400).json({ error: 'Title and description are required' });
+    }
+    if (priority && !isOneOf(priority, PRIORITIES)) {
+      return res.status(400).json({ error: 'Invalid priority' });
     }
     if (!tenant.room?.propertyId) {
       return res.status(400).json({ error: 'No unit assigned to your account' });
@@ -223,9 +232,9 @@ router.post('/maintenance', async (req, res) => {
 
     const request = await prisma.maintenanceRequest.create({
       data: {
-        title,
-        description,
-        priority: priority || 'medium',
+        title: trim(title),
+        description: trim(description),
+        priority: isOneOf(priority, PRIORITIES) ? priority : 'medium',
         propertyId: tenant.room.propertyId,
         tenantId: tenant.id,
         requestedBy: 'tenant',

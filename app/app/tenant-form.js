@@ -6,6 +6,9 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { api } from '../services/api';
 import { COLORS } from '../constants/theme';
 import { getParam } from '../utils/params';
+import {
+  isRequired, isPhone, validateOptionalEmail, validateDateRange, trim,
+} from '../utils/validation';
 
 export default function TenantFormScreen() {
   const params = useLocalSearchParams();
@@ -42,13 +45,35 @@ export default function TenantFormScreen() {
   );
 
   async function handleSubmit() {
-    if (!form.name || !form.phone) {
+    if (!isRequired(form.name) || !isRequired(form.phone)) {
       Alert.alert('Error', 'Name and phone are required');
       return;
     }
+    if (!isPhone(form.phone)) {
+      Alert.alert('Error', 'Enter a valid phone number');
+      return;
+    }
+    const emailError = validateOptionalEmail(form.email);
+    if (emailError) {
+      Alert.alert('Error', emailError);
+      return;
+    }
+    const leaseError = validateDateRange(form.leaseStart, form.leaseEnd);
+    if (leaseError) {
+      Alert.alert('Error', leaseError);
+      return;
+    }
+
     setLoading(true);
     try {
-      const data = { ...form, roomId: form.roomId || null };
+      const data = {
+        name: trim(form.name),
+        email: trim(form.email) || null,
+        phone: trim(form.phone),
+        leaseStart: form.leaseStart || null,
+        leaseEnd: form.leaseEnd || null,
+        roomId: form.roomId || null,
+      };
       if (id) {
         await api.updateTenant(id, data);
       } else {
@@ -66,15 +91,37 @@ export default function TenantFormScreen() {
     <ScrollView style={styles.container}>
       {['name', 'email', 'phone'].map((field) => (
         <View key={field}>
-          <Text style={styles.label}>{field.charAt(0).toUpperCase() + field.slice(1)}</Text>
+          <Text style={styles.label}>
+            {field.charAt(0).toUpperCase() + field.slice(1)}
+            {field !== 'email' ? ' *' : ''}
+          </Text>
           <TextInput
             style={styles.input}
             value={form[field]}
             onChangeText={(v) => setForm((prev) => ({ ...prev, [field]: v }))}
             keyboardType={field === 'email' ? 'email-address' : field === 'phone' ? 'phone-pad' : 'default'}
+            autoCapitalize={field === 'email' ? 'none' : 'words'}
           />
         </View>
       ))}
+
+      <Text style={styles.label}>Lease start (optional)</Text>
+      <TextInput
+        style={styles.input}
+        value={form.leaseStart}
+        onChangeText={(v) => setForm((prev) => ({ ...prev, leaseStart: v }))}
+        placeholder="YYYY-MM-DD"
+        autoCapitalize="none"
+      />
+
+      <Text style={styles.label}>Lease end (optional)</Text>
+      <TextInput
+        style={styles.input}
+        value={form.leaseEnd}
+        onChangeText={(v) => setForm((prev) => ({ ...prev, leaseEnd: v }))}
+        placeholder="YYYY-MM-DD"
+        autoCapitalize="none"
+      />
 
       <Text style={styles.label}>Assign Room</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.roomList}>

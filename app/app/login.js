@@ -10,6 +10,7 @@ import { api } from '../services/api';
 import { COLORS, RADIUS, SHADOW } from '../constants/theme';
 import { getHomeRoute } from '../utils/roles';
 import { getParam } from '../utils/params';
+import { isRequired, isEmail } from '../utils/validation';
 
 export default function LoginScreen() {
   const params = useLocalSearchParams();
@@ -18,17 +19,18 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [resetEmail, setResetEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
 
   async function handleLogin() {
-    if (!username || !password) {
+    if (!isRequired(username) || !isRequired(password)) {
       Alert.alert('Error', 'Please enter username and password');
       return;
     }
     setLoading(true);
     try {
-      const userData = await login(username, password);
+      const userData = await login(username.trim(), password);
       if (returnRoomId && userData.role === 'seeker') {
         router.replace({ pathname: '/room-detail', params: { id: returnRoomId } });
       } else {
@@ -42,15 +44,22 @@ export default function LoginScreen() {
   }
 
   async function handleForgotPassword() {
-    if (!resetEmail) {
+    if (!isRequired(resetEmail)) {
       Alert.alert('Error', 'Enter your email address');
       return;
     }
+    if (!isEmail(resetEmail)) {
+      Alert.alert('Error', 'Enter a valid email address');
+      return;
+    }
+    setResetLoading(true);
     try {
-      const result = await api.forgotPassword(resetEmail);
+      const result = await api.forgotPassword(resetEmail.trim());
       Alert.alert('Password Reset', result.message);
     } catch (err) {
       Alert.alert('Error', err.message);
+    } finally {
+      setResetLoading(false);
     }
   }
 
@@ -113,8 +122,8 @@ export default function LoginScreen() {
             autoCapitalize="none"
             keyboardType="email-address"
           />
-          <TouchableOpacity style={styles.forgotButton} onPress={handleForgotPassword}>
-            <Text style={styles.linkText}>Send reset link</Text>
+          <TouchableOpacity style={styles.forgotButton} onPress={handleForgotPassword} disabled={resetLoading}>
+            <Text style={styles.linkText}>{resetLoading ? 'Sending...' : 'Send reset link'}</Text>
           </TouchableOpacity>
 
           <Link href="/register" asChild>

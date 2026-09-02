@@ -11,6 +11,7 @@ import { RoomImage, RoomImageGallery } from '../components/RoomImage';
 import { COLORS, RADIUS, SHADOW } from '../constants/theme';
 import { getParam } from '../utils/params';
 import { formatMoney } from '../utils/currency';
+import { trim } from '../utils/validation';
 
 function DetailRow({ icon, label, value }) {
   return (
@@ -64,9 +65,14 @@ export default function RoomDetailScreen() {
       return;
     }
 
+    if (message.length > 500) {
+      Alert.alert('Error', 'Message must be 500 characters or less');
+      return;
+    }
+
     setBooking(true);
     try {
-      await api.createBooking(roomId, message);
+      await api.createBooking(roomId, trim(message) || undefined);
       Alert.alert('Request sent!', 'The landlord will review your booking.', [
         { text: 'OK', onPress: () => router.replace('/(seeker-tabs)/requests') },
       ]);
@@ -124,6 +130,7 @@ export default function RoomDetailScreen() {
               onChangeText={setMessage}
               placeholder="Introduce yourself..."
               placeholderTextColor={COLORS.textLight}
+              maxLength={500}
               multiline
             />
           </View>
