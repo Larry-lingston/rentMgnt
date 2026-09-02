@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { COLORS, RADIUS, SHADOW } from '../constants/theme';
+import { PasswordInput } from '../components/PasswordInput';
 import { getHomeRoute } from '../utils/roles';
 import { getParam } from '../utils/params';
 import { isRequired, isEmail } from '../utils/validation';
@@ -91,17 +92,12 @@ export default function LoginScreen() {
             />
           </View>
 
-          <View style={styles.inputWrap}>
-            <Ionicons name="lock-closed-outline" size={20} color={COLORS.textLight} style={styles.inputIcon} />
-            <TextInput
-              style={styles.inputWithIcon}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Password"
-              placeholderTextColor={COLORS.textLight}
-              secureTextEntry
-            />
-          </View>
+          <PasswordInput
+            withIcon
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Password"
+          />
 
           <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
             <Ionicons name="log-in-outline" size={22} color={COLORS.white} />

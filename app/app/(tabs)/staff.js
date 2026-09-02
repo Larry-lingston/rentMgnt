@@ -8,6 +8,7 @@ import { api } from '../../services/api';
 import { EmptyState, LoadingScreen } from '../../components/UI';
 import { COLORS } from '../../constants/theme';
 import { validateStaffForm, trim } from '../../utils/validation';
+import { PasswordInput } from '../../components/PasswordInput';
 
 export default function StaffManagementScreen() {
   const [staff, setStaff] = useState([]);
@@ -86,13 +87,20 @@ export default function StaffManagementScreen() {
             {['name', 'username', 'email', 'phone', 'password'].map((field) => (
               <View key={field}>
                 <Text style={styles.label}>{field.charAt(0).toUpperCase() + field.slice(1)}</Text>
-                <TextInput
-                  style={styles.input}
-                  value={form[field]}
-                  onChangeText={(v) => setForm((p) => ({ ...p, [field]: v }))}
-                  secureTextEntry={field === 'password'}
-                  autoCapitalize={field === 'email' || field === 'username' ? 'none' : 'words'}
-                />
+                {field === 'password' ? (
+                  <PasswordInput
+                    value={form[field]}
+                    onChangeText={(v) => setForm((p) => ({ ...p, [field]: v }))}
+                    placeholder="Enter password"
+                  />
+                ) : (
+                  <TextInput
+                    style={styles.input}
+                    value={form[field]}
+                    onChangeText={(v) => setForm((p) => ({ ...p, [field]: v }))}
+                    autoCapitalize={field === 'email' || field === 'username' ? 'none' : 'words'}
+                  />
+                )}
               </View>
             ))}
             <View style={styles.modalActions}>

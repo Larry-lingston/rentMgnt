@@ -7,6 +7,7 @@ import { useRouter, Link, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { ACCOUNT_TYPES, accountTypeNeedsLandlord, getHomeRoute } from '../utils/roles';
 import { COLORS } from '../constants/theme';
+import { PasswordInput } from '../components/PasswordInput';
 import { getParam } from '../utils/params';
 import { isRequired, isEmail, isPassword, trim } from '../utils/validation';
 
@@ -119,17 +120,24 @@ export default function RegisterScreen() {
               {field.charAt(0).toUpperCase() + field.slice(1)}
               {field !== 'phone' ? ' *' : ''}
             </Text>
-            <TextInput
-              style={styles.input}
-              value={form[field]}
-              onChangeText={(v) => updateField(field, v)}
-              placeholder={`Enter ${field}`}
-              secureTextEntry={field === 'password'}
-              autoCapitalize={field === 'email' || field === 'username' ? 'none' : 'words'}
-              keyboardType={
-                field === 'email' ? 'email-address' : field === 'phone' ? 'phone-pad' : 'default'
-              }
-            />
+            {field === 'password' ? (
+              <PasswordInput
+                value={form[field]}
+                onChangeText={(v) => updateField(field, v)}
+                placeholder="Enter password"
+              />
+            ) : (
+              <TextInput
+                style={styles.input}
+                value={form[field]}
+                onChangeText={(v) => updateField(field, v)}
+                placeholder={`Enter ${field}`}
+                autoCapitalize={field === 'email' || field === 'username' ? 'none' : 'words'}
+                keyboardType={
+                  field === 'email' ? 'email-address' : field === 'phone' ? 'phone-pad' : 'default'
+                }
+              />
+            )}
           </View>
         ))}
 

@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS } from '../../constants/theme';
 import { validateProfile, trim } from '../../utils/validation';
+import { PasswordInput } from '../../components/PasswordInput';
 
 export default function ProfileScreen() {
   const { user, updateProfile, logout } = useAuth();
@@ -66,13 +67,20 @@ export default function ProfileScreen() {
           <Text style={styles.label}>
             {field === 'password' ? 'New Password (optional)' : field.charAt(0).toUpperCase() + field.slice(1)}
           </Text>
-          <TextInput
-            style={styles.input}
-            value={form[field]}
-            onChangeText={(v) => setForm((prev) => ({ ...prev, [field]: v }))}
-            secureTextEntry={field === 'password'}
-            keyboardType={field === 'email' ? 'email-address' : field === 'phone' ? 'phone-pad' : 'default'}
-          />
+          {field === 'password' ? (
+            <PasswordInput
+              value={form[field]}
+              onChangeText={(v) => setForm((prev) => ({ ...prev, [field]: v }))}
+              placeholder="Enter new password"
+            />
+          ) : (
+            <TextInput
+              style={styles.input}
+              value={form[field]}
+              onChangeText={(v) => setForm((prev) => ({ ...prev, [field]: v }))}
+              keyboardType={field === 'email' ? 'email-address' : field === 'phone' ? 'phone-pad' : 'default'}
+            />
+          )}
         </View>
       ))}
 

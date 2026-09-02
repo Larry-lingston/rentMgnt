@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS } from '../../constants/theme';
 import { validateProfile, trim } from '../../utils/validation';
+import { PasswordInput } from '../../components/PasswordInput';
 
 export default function StaffProfileScreen() {
   const { user, logout, updateProfile } = useAuth();
@@ -51,7 +52,21 @@ export default function StaffProfileScreen() {
       {['name', 'email', 'phone', 'password'].map((field) => (
         <View key={field}>
           <Text style={styles.label}>{field === 'password' ? 'New Password' : field.charAt(0).toUpperCase() + field.slice(1)}</Text>
-          <TextInput style={styles.input} value={form[field]} onChangeText={(v) => setForm((p) => ({ ...p, [field]: v }))} secureTextEntry={field === 'password'} />
+          {field === 'password' ? (
+            <PasswordInput
+              value={form[field]}
+              onChangeText={(v) => setForm((p) => ({ ...p, [field]: v }))}
+              placeholder="Enter new password"
+            />
+          ) : (
+            <TextInput
+              style={styles.input}
+              value={form[field]}
+              onChangeText={(v) => setForm((p) => ({ ...p, [field]: v }))}
+              keyboardType={field === 'email' ? 'email-address' : field === 'phone' ? 'phone-pad' : 'default'}
+              autoCapitalize={field === 'email' ? 'none' : 'words'}
+            />
+          )}
         </View>
       ))}
       <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={loading}>
