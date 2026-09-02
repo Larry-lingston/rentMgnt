@@ -67,6 +67,13 @@ class ApiService {
     return this.request('/auth/profile', { method: 'PUT', body: data });
   }
 
+  changePassword(currentPassword, newPassword) {
+    return this.request('/auth/change-password', {
+      method: 'PUT',
+      body: { currentPassword, newPassword },
+    });
+  }
+
   // Dashboard
   getDashboard() {
     return this.request('/dashboard');

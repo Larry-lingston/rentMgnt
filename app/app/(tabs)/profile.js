@@ -3,21 +3,22 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS } from '../../constants/theme';
 import { validateProfile, trim } from '../../utils/validation';
-import { PasswordInput } from '../../components/PasswordInput';
+import { ChangePasswordModal } from '../../components/ChangePasswordModal';
 
 export default function ProfileScreen() {
-  const { user, updateProfile, logout } = useAuth();
+  const { user, updateProfile, changePassword, logout } = useAuth();
   const router = useRouter();
   const [form, setForm] = useState({
     name: user?.name || '',
     email: user?.email || '',
     phone: user?.phone || '',
-    password: '',
   });
   const [loading, setLoading] = useState(false);
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
 
   async function handleSave() {
     const error = validateProfile(form);
@@ -27,15 +28,12 @@ export default function ProfileScreen() {
     }
     setLoading(true);
     try {
-      const data = {
+      await updateProfile({
         name: trim(form.name),
         email: trim(form.email),
         phone: trim(form.phone) || null,
-      };
-      if (form.password) data.password = form.password;
-      await updateProfile(data);
+      });
       Alert.alert('Success', 'Profile updated successfully');
-      setForm((prev) => ({ ...prev, password: '' }));
     } catch (err) {
       Alert.alert('Error', err.message);
     } finally {
@@ -62,27 +60,24 @@ export default function ProfileScreen() {
         <Text style={styles.username}>@{user?.username}</Text>
       </View>
 
-      {['name', 'email', 'phone', 'password'].map((field) => (
+      {['name', 'email', 'phone'].map((field) => (
         <View key={field}>
-          <Text style={styles.label}>
-            {field === 'password' ? 'New Password (optional)' : field.charAt(0).toUpperCase() + field.slice(1)}
-          </Text>
-          {field === 'password' ? (
-            <PasswordInput
-              value={form[field]}
-              onChangeText={(v) => setForm((prev) => ({ ...prev, [field]: v }))}
-              placeholder="Enter new password"
-            />
-          ) : (
-            <TextInput
-              style={styles.input}
-              value={form[field]}
-              onChangeText={(v) => setForm((prev) => ({ ...prev, [field]: v }))}
-              keyboardType={field === 'email' ? 'email-address' : field === 'phone' ? 'phone-pad' : 'default'}
-            />
-          )}
+          <Text style={styles.label}>{field.charAt(0).toUpperCase() + field.slice(1)}</Text>
+          <TextInput
+            style={styles.input}
+            value={form[field]}
+            onChangeText={(v) => setForm((prev) => ({ ...prev, [field]: v }))}
+            keyboardType={field === 'email' ? 'email-address' : field === 'phone' ? 'phone-pad' : 'default'}
+            autoCapitalize={field === 'email' ? 'none' : 'words'}
+          />
         </View>
       ))}
+
+      <TouchableOpacity style={styles.changePasswordButton} onPress={() => setPasswordModalVisible(true)}>
+        <Ionicons name="key-outline" size={20} color={COLORS.primary} />
+        <Text style={styles.changePasswordText}>Change Password</Text>
+        <Ionicons name="chevron-forward" size={18} color={COLORS.textLight} />
+      </TouchableOpacity>
 
       <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={loading}>
         <Text style={styles.saveText}>{loading ? 'Saving...' : 'Save Changes'}</Text>
@@ -91,6 +86,13 @@ export default function ProfileScreen() {
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
+
+      <ChangePasswordModal
+        visible={passwordModalVisible}
+        onClose={() => setPasswordModalVisible(false)}
+        onChangePassword={changePassword}
+        accentColor={COLORS.primary}
+      />
     </ScrollView>
   );
 }
@@ -109,9 +111,21 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: COLORS.border, borderRadius: 10,
     padding: 14, fontSize: 16, backgroundColor: COLORS.card,
   },
+  changePasswordButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    padding: 16,
+    marginTop: 20,
+  },
+  changePasswordText: { flex: 1, fontSize: 15, fontWeight: '600', color: COLORS.text },
   saveButton: {
     backgroundColor: COLORS.primary, borderRadius: 10, padding: 16,
-    alignItems: 'center', marginTop: 24,
+    alignItems: 'center', marginTop: 16,
   },
   saveText: { color: COLORS.white, fontSize: 16, fontWeight: '600' },
   logoutButton: {

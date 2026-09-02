@@ -69,9 +69,16 @@ export function validateProfile(form) {
   if (!isRequired(form.name)) return 'Name is required';
   if (!isRequired(form.email)) return 'Email is required';
   if (!isEmail(form.email)) return 'Enter a valid email address';
-  if (form.password && !isPassword(form.password)) {
-    return 'New password must be at least 6 characters';
-  }
+  return null;
+}
+
+export function validatePasswordChange(form) {
+  if (!isRequired(form.currentPassword)) return 'Current password is required';
+  if (!isRequired(form.newPassword)) return 'New password is required';
+  if (!isPassword(form.newPassword)) return 'New password must be at least 6 characters';
+  if (!isRequired(form.confirmPassword)) return 'Please confirm your new password';
+  if (form.newPassword !== form.confirmPassword) return 'New passwords do not match';
+  if (form.currentPassword === form.newPassword) return 'New password must be different from current password';
   return null;
 }
 

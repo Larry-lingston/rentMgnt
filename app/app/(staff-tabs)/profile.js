@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS } from '../../constants/theme';
 import { validateProfile, trim } from '../../utils/validation';
-import { PasswordInput } from '../../components/PasswordInput';
+import { ChangePasswordModal } from '../../components/ChangePasswordModal';
+
+const STAFF_COLOR = '#3182ce';
 
 export default function StaffProfileScreen() {
-  const { user, logout, updateProfile } = useAuth();
+  const { user, logout, updateProfile, changePassword } = useAuth();
   const router = useRouter();
-  const [form, setForm] = useState({ name: user?.name || '', email: user?.email || '', phone: user?.phone || '', password: '' });
+  const [form, setForm] = useState({ name: user?.name || '', email: user?.email || '', phone: user?.phone || '' });
   const [loading, setLoading] = useState(false);
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
 
   async function handleSave() {
     const error = validateProfile(form);
@@ -20,15 +24,12 @@ export default function StaffProfileScreen() {
     }
     setLoading(true);
     try {
-      const data = {
+      await updateProfile({
         name: trim(form.name),
         email: trim(form.email),
         phone: trim(form.phone) || null,
-      };
-      if (form.password) data.password = form.password;
-      await updateProfile(data);
+      });
       Alert.alert('Success', 'Profile updated');
-      setForm((p) => ({ ...p, password: '' }));
     } catch (err) {
       Alert.alert('Error', err.message);
     } finally {
@@ -49,32 +50,39 @@ export default function StaffProfileScreen() {
         <View style={styles.avatar}><Text style={styles.avatarText}>{user?.name?.charAt(0)}</Text></View>
         <Text style={styles.role}>Maintenance Crew</Text>
       </View>
-      {['name', 'email', 'phone', 'password'].map((field) => (
+
+      {['name', 'email', 'phone'].map((field) => (
         <View key={field}>
-          <Text style={styles.label}>{field === 'password' ? 'New Password' : field.charAt(0).toUpperCase() + field.slice(1)}</Text>
-          {field === 'password' ? (
-            <PasswordInput
-              value={form[field]}
-              onChangeText={(v) => setForm((p) => ({ ...p, [field]: v }))}
-              placeholder="Enter new password"
-            />
-          ) : (
-            <TextInput
-              style={styles.input}
-              value={form[field]}
-              onChangeText={(v) => setForm((p) => ({ ...p, [field]: v }))}
-              keyboardType={field === 'email' ? 'email-address' : field === 'phone' ? 'phone-pad' : 'default'}
-              autoCapitalize={field === 'email' ? 'none' : 'words'}
-            />
-          )}
+          <Text style={styles.label}>{field.charAt(0).toUpperCase() + field.slice(1)}</Text>
+          <TextInput
+            style={styles.input}
+            value={form[field]}
+            onChangeText={(v) => setForm((p) => ({ ...p, [field]: v }))}
+            keyboardType={field === 'email' ? 'email-address' : field === 'phone' ? 'phone-pad' : 'default'}
+            autoCapitalize={field === 'email' ? 'none' : 'words'}
+          />
         </View>
       ))}
+
+      <TouchableOpacity style={styles.changePasswordButton} onPress={() => setPasswordModalVisible(true)}>
+        <Ionicons name="key-outline" size={20} color={STAFF_COLOR} />
+        <Text style={styles.changePasswordText}>Change Password</Text>
+        <Ionicons name="chevron-forward" size={18} color={COLORS.textLight} />
+      </TouchableOpacity>
+
       <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={loading}>
         <Text style={styles.saveText}>{loading ? 'Saving...' : 'Save Changes'}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
+
+      <ChangePasswordModal
+        visible={passwordModalVisible}
+        onClose={() => setPasswordModalVisible(false)}
+        onChangePassword={changePassword}
+        accentColor={STAFF_COLOR}
+      />
     </ScrollView>
   );
 }
@@ -82,12 +90,18 @@ export default function StaffProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background, padding: 16 },
   header: { alignItems: 'center', marginBottom: 20 },
-  avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#3182ce', justifyContent: 'center', alignItems: 'center' },
+  avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: STAFF_COLOR, justifyContent: 'center', alignItems: 'center' },
   avatarText: { color: COLORS.white, fontSize: 28, fontWeight: '700' },
   role: { marginTop: 8, color: COLORS.textLight },
   label: { fontSize: 14, fontWeight: '600', color: COLORS.text, marginBottom: 6, marginTop: 12 },
   input: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 14, backgroundColor: COLORS.card },
-  saveButton: { backgroundColor: '#3182ce', borderRadius: 10, padding: 16, alignItems: 'center', marginTop: 24 },
+  changePasswordButton: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.border,
+    borderRadius: 10, padding: 16, marginTop: 20,
+  },
+  changePasswordText: { flex: 1, fontSize: 15, fontWeight: '600', color: COLORS.text },
+  saveButton: { backgroundColor: STAFF_COLOR, borderRadius: 10, padding: 16, alignItems: 'center', marginTop: 16 },
   saveText: { color: COLORS.white, fontWeight: '600' },
   logoutButton: { borderWidth: 1, borderColor: COLORS.danger, borderRadius: 10, padding: 16, alignItems: 'center', marginTop: 16, marginBottom: 40 },
   logoutText: { color: COLORS.danger, fontWeight: '600' },

@@ -178,7 +178,7 @@ router.get('/profile', authMiddleware, async (req, res) => {
 
 router.put('/profile', authMiddleware, async (req, res) => {
   try {
-    const { name, email, phone, password } = req.body;
+    const { name, email, phone } = req.body;
     const data = {};
 
     if (name !== undefined) {
@@ -206,12 +206,6 @@ router.put('/profile', authMiddleware, async (req, res) => {
     if (phone !== undefined) {
       data.phone = trim(phone) || null;
     }
-    if (password) {
-      if (!isPassword(password)) {
-        return res.status(400).json({ error: 'Password must be at least 6 characters' });
-      }
-      data.password = await bcrypt.hash(password, 10);
-    }
 
     const user = await prisma.user.update({
       where: { id: req.user.id },
@@ -219,6 +213,36 @@ router.put('/profile', authMiddleware, async (req, res) => {
       select: userSelect,
     });
     res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/change-password', authMiddleware, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!isRequired(currentPassword) || !isRequired(newPassword)) {
+      return res.status(400).json({ error: 'Current password and new password are required' });
+    }
+    if (!isPassword(newPassword)) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    }
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ error: 'New password must be different from current password' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!user || !(await bcrypt.compare(currentPassword, user.password))) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { password: await bcrypt.hash(newPassword, 10) },
+    });
+
+    res.json({ message: 'Password changed successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
