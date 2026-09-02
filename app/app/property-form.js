@@ -16,6 +16,7 @@ import { getParam } from '../utils/params';
 import {
   isRequired, isPositiveInt, validateLatitude, validateLongitude, trim,
 } from '../utils/validation';
+import { formatCoordinate, getCurrentCoordinates } from '../utils/location';
 
 const PROPERTY_TYPES = [
   { id: 'apartment', label: 'Apartment' },
@@ -33,6 +34,7 @@ export default function PropertyFormScreen() {
   });
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [locating, setLocating] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -51,6 +53,25 @@ export default function PropertyFormScreen() {
       });
     }
   }, [id]);
+
+  async function handleUseCurrentLocation() {
+    setLocating(true);
+    try {
+      const coords = await getCurrentCoordinates();
+      if (!coords) return;
+
+      setForm((prev) => ({
+        ...prev,
+        latitude: formatCoordinate(coords.latitude),
+        longitude: formatCoordinate(coords.longitude),
+      }));
+      Alert.alert('Location captured', 'Latitude and longitude have been filled from your current position.');
+    } catch (err) {
+      Alert.alert('Location unavailable', err.message || 'Could not get your current location. Try again or enter coordinates manually.');
+    } finally {
+      setLocating(false);
+    }
+  }
 
   async function handleSubmit() {
     if (!isRequired(form.name) || !isRequired(form.address)) {
@@ -175,27 +196,54 @@ export default function PropertyFormScreen() {
       <Text style={styles.hint}>Tap Add photo to take a picture or choose from your gallery.</Text>
       <PropertyImagePicker images={images} onChange={setImages} minImages={1} />
 
-      <View>
-        <Text style={styles.label}>Latitude (optional)</Text>
-        <TextInput
-          style={styles.input}
-          value={form.latitude}
-          onChangeText={(v) => setForm((prev) => ({ ...prev, latitude: v }))}
-          keyboardType="decimal-pad"
-          placeholder="e.g. 5.6350"
-          placeholderTextColor={COLORS.textLight}
-        />
-      </View>
-      <View>
-        <Text style={styles.label}>Longitude (optional)</Text>
-        <TextInput
-          style={styles.input}
-          value={form.longitude}
-          onChangeText={(v) => setForm((prev) => ({ ...prev, longitude: v }))}
-          keyboardType="decimal-pad"
-          placeholder="e.g. -0.1670"
-          placeholderTextColor={COLORS.textLight}
-        />
+      <Text style={styles.label}>Property location (optional)</Text>
+      <Text style={styles.hint}>
+        Pin the property on the map by using your phone's GPS, or enter coordinates manually.
+      </Text>
+
+      <TouchableOpacity
+        style={[styles.locationButton, locating && styles.locationButtonDisabled]}
+        onPress={handleUseCurrentLocation}
+        disabled={locating}
+      >
+        <Ionicons name="locate" size={20} color={COLORS.white} />
+        <Text style={styles.locationButtonText}>
+          {locating ? 'Getting location...' : 'Use my current location'}
+        </Text>
+      </TouchableOpacity>
+
+      {form.latitude && form.longitude ? (
+        <View style={styles.coordsPreview}>
+          <Ionicons name="checkmark-circle" size={18} color={COLORS.secondary} />
+          <Text style={styles.coordsPreviewText}>
+            {form.latitude}, {form.longitude}
+          </Text>
+        </View>
+      ) : null}
+
+      <View style={styles.coordsRow}>
+        <View style={styles.coordField}>
+          <Text style={styles.coordLabel}>Latitude</Text>
+          <TextInput
+            style={styles.input}
+            value={form.latitude}
+            onChangeText={(v) => setForm((prev) => ({ ...prev, latitude: v }))}
+            keyboardType="decimal-pad"
+            placeholder="e.g. 5.6350"
+            placeholderTextColor={COLORS.textLight}
+          />
+        </View>
+        <View style={styles.coordField}>
+          <Text style={styles.coordLabel}>Longitude</Text>
+          <TextInput
+            style={styles.input}
+            value={form.longitude}
+            onChangeText={(v) => setForm((prev) => ({ ...prev, longitude: v }))}
+            keyboardType="decimal-pad"
+            placeholder="e.g. -0.1670"
+            placeholderTextColor={COLORS.textLight}
+          />
+        </View>
       </View>
 
       <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={loading}>
@@ -229,6 +277,33 @@ const styles = StyleSheet.create({
   typeChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   typeChipText: { fontSize: 14, fontWeight: '600', color: COLORS.text },
   typeChipTextActive: { color: COLORS.white },
+  locationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: COLORS.secondary,
+    borderRadius: RADIUS.md,
+    padding: 14,
+    marginTop: 4,
+  },
+  locationButtonDisabled: { opacity: 0.7 },
+  locationButtonText: { color: COLORS.white, fontSize: 15, fontWeight: '600' },
+  coordsPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+    padding: 12,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.secondary + '12',
+    borderWidth: 1,
+    borderColor: COLORS.secondary + '30',
+  },
+  coordsPreviewText: { flex: 1, fontSize: 13, color: COLORS.text, fontWeight: '500' },
+  coordsRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  coordField: { flex: 1 },
+  coordLabel: { fontSize: 13, fontWeight: '600', color: COLORS.textLight, marginBottom: 6 },
   button: {
     backgroundColor: COLORS.primary, borderRadius: RADIUS.md, padding: 16,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,

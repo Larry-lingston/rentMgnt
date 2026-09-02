@@ -38,6 +38,12 @@
           "photosPermission": "Allow Rent Manager to access your photos for property listings.",
           "cameraPermission": "Allow Rent Manager to use your camera for property photos."
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Rent Manager to use your location to pin properties on the map."
+        }
       ]
     ]
   }
